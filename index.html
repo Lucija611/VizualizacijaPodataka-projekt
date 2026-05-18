@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turizam HR 2025</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">Statistika dolazaka i noćenja u Hrvatskoj u 2025.</div>
+</header>
+
+<main class="page">
+
+  <div class="grid-top">
+
+    <div class="card map-card">
+      <div class="card-inner">
+        <div class="card-title"><strong>Broj turista po županijama</strong></div>
+        <div class="filter-pills">
+          <button class="pill active" data-metric="total">Ukupni turisti</button>
+          <button class="pill" data-metric="strani">Strani turisti</button>
+          <button class="pill" data-metric="domaci">Domaći turisti</button>
+          <button class="pill" data-metric="nocenja">Noćenja</button>
+        </div>
+        <div id="map-container">
+          <div class="loading" id="map-loading"><div class="spinner"></div> Učitavanje karte...</div>
+          <svg id="map-svg" style="display:none"></svg>
+          <div class="map-tooltip" id="map-tooltip"></div>
+        </div>
+        <div class="map-legend">
+          <span id="legend-min">0</span>
+          <div class="legend-bar"></div>
+          <span id="legend-max">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card stats-card">
+      <div class="card-inner" style="display:flex;flex-direction:column;height:100%;">
+        <div class="card-title"><strong>Ukupna statistika</strong></div>
+        <div class="stat-hero">
+          <div class="stat-hero-label">Ukupni dolasci 2025.</div>
+          <div class="stat-hero-val" id="stat-total">—</div>
+        </div>
+        <div class="stat-row">
+          <svg id="pie-svg" width="110" height="110"></svg>
+          <div class="stat-row-text">
+            <div class="stat-block">
+              <div class="stat-block-label">Strani turisti</div>
+              <div class="stat-block-val" id="stat-strani">—</div>
+              <div class="stat-block-sub" id="stat-strani-pct">—</div>
+            </div>
+            <br>
+            <div class="stat-block">
+              <div class="stat-block-label">Domaći turisti</div>
+              <div class="stat-block-val" id="stat-domaci">—</div>
+              <div class="stat-block-sub" id="stat-domaci-pct">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-block-full">
+          <div class="stat-block-label">Ukupna noćenja</div>
+          <div class="stat-block-val" id="stat-nocenja">—</div>
+          <div class="stat-block-sub" id="stat-nocenja-sub">—</div>
+        </div>
+        <div class="selected-info" id="selected-info">
+          <div class="hint"> Klikni na županiju na karti za detalje</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card line-card" style="margin-bottom: 20px;">
+    <div class="card-inner">
+      <div class="card-title"><strong>Usporedba županija kroz cijelu godinu</strong></div>
+      <div class="county-chips" id="county-chips">
+      </div>
+      <div class="line-filter-row">
+        <button class="line-pill active" data-lmetric="total">Ukupno</button>
+        <button class="line-pill" data-lmetric="strani">Strani</button>
+        <button class="line-pill" data-lmetric="domaci">Domaći</button>
+        <button class="line-pill" data-lmetric="nocenja">Noćenja</button>
+      </div>
+      <div style="position:relative;">
+        <svg id="line-svg"></svg>
+        <div class="line-tooltip" id="line-tooltip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bar-card">
+    <div class="card-inner">
+      <div class="card-title"><strong>Dolasci vs. noćenja po županijama</strong></div>
+      <div class="month-row">
+        <label>Siječanj</label>
+        <input type="range" id="month-slider" min="1" max="12" value="7" step="1">
+        <label>Prosinac</label>
+        <span class="month-name" id="month-display">Srpanj</span>
+      </div>
+      <div style="position:relative;">
+        <svg id="bar-svg"></svg>
+        <div class="bar-tooltip" id="bar-tooltip"></div>
+      </div>
+      <div class="bar-legend">
+        <div class="bar-legend-item">
+          <div class="bar-legend-dot" style="background:var(--accent)"></div>
+          Dolasci
+        </div>
+        <div class="bar-legend-item">
+          <div class="bar-legend-dot" style="background:var(--coral)"></div>
+          Noćenja
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const MONTHS = ['Siječanj','Veljača','Ožujak','Travanj','Svibanj','Lipanj',
+                'Srpanj','Kolovoz','Rujan','Listopad','Studeni','Prosinac'];
+const MONTHS_SHORT = ['Sij','Velj','Ožu','Tra','Svi','Lip','Srp','Kol','Ruj','Lis','Stu','Pro'];
+const LINE_COLORS = ['#1e5fa8','#1a6b4a','#c94b2a','#8b5cf6','#d97706'];
+
+const NAME_MAP = {
+  'Bjelovarska-Bilogorska': 'Bjelovarsko-bilogorska',
+  'Brodsko-Posavska': 'Brodsko-posavska',
+  'Dubrovacko-Neretvanska': 'Dubrovačko-neretvanska',
+  'GradZagreb': 'Grad Zagreb',
+  'Istarska': 'Istra',
+  'Karlovacka': 'Karlovačka',
+  'Koprivničko-Križevačka': 'Koprivničko-križevačka',
+  'Krapinsko-Zagorska': 'Krapinsko-zagorska',
+  'Licko-Senjska': 'Ličko-senjska',
+  'Medimurska': 'Međimurska',
+  'Osjecko-Baranjska': 'Osječko-baranjska',
+  'Požeško-Slavonska': 'Požeško-slavonska',
+  'Primorsko-Goranska': 'Kvarner',
+  'Šibensko-Kninska': 'Šibensko-kninska',
+  'Sisacko-Moslavacka': 'Sisačko-moslavačka',
+  'Splitsko-Dalmatinska': 'Splitsko-dalmatinska',
+  'Varaždinska': 'Varaždinska',
+  'Viroviticko-Podravska': 'Virovitičko-podravska',
+  'Vukovarsko-Srijemska': 'Vukovarsko-srijemska',
+  'Zadarska': 'Zadarska',
+  'Zagrebačka': 'Zagrebačka'
+};
+
+let geoData = null, csvData = null, countyData = {};
+let selectedCounties = [];
+let currentMetric = 'total', currentLineMetric = 'total', currentMonth = 7;
+
+Promise.all([
+  d3.json('croatia.json'),
+  d3.csv('TuristickaStatistika2025.csv')
+]).then(([geo, csv]) => {
+  geoData = geo;
+  csvData = csv;
+  csv.forEach(row => {
+    const zup = row['županija'].trim();
+    const mj = +row['mjesec'];
+    if (!countyData[zup]) countyData[zup] = {};
+    countyData[zup][mj] = {
+      domaci:    +row['broj dolazaka domaćih turista'],
+      strani:    +row['broj dolazaka stranih turista'],
+      nocDomaci: +row['broj noćenja domaćih turista'],
+      nocStrani: +row['broj noćenja stranih turista'],
+    };
+  });
+  updateStats();
+  drawMap();
+  drawBarChart();
+  drawLineChart();
+}).catch(() => {});
+
+function getMetricValue(zup, metric) {
+  const months = countyData[zup];
+  if (!months) return 0;
+  return Object.values(months).reduce((sum, m) => {
+    if (metric === 'total')   return sum + m.domaci + m.strani;
+    if (metric === 'strani')  return sum + m.strani;
+    if (metric === 'domaci')  return sum + m.domaci;
+    if (metric === 'nocenja') return sum + m.nocDomaci + m.nocStrani;
+    return sum;
+  }, 0);
+}
+
+function getMonthValue(zup, month, metric) {
+  const m = countyData[zup]?.[month];
+  if (!m) return 0;
+  if (metric === 'total')   return m.domaci + m.strani;
+  if (metric === 'strani')  return m.strani;
+  if (metric === 'domaci')  return m.domaci;
+  if (metric === 'nocenja') return m.nocDomaci + m.nocStrani;
+  return 0;
+}
+
+function formatNum(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'k';
+  return n.toString();
+}
+
+function formatFull(n) {
+  return new Intl.NumberFormat('hr-HR').format(Math.round(n));
+}
+
+function updateStats() {
+  let totalDomaci = 0, totalStrani = 0, totalNoc = 0;
+  Object.values(countyData).forEach(months =>
+    Object.values(months).forEach(m => {
+      totalDomaci += m.domaci; totalStrani += m.strani;
+      totalNoc += m.nocDomaci + m.nocStrani;
+    })
+  );
+  const total = totalDomaci + totalStrani;
+  document.getElementById('stat-total').textContent = formatNum(total);
+  document.getElementById('stat-strani').textContent = formatNum(totalStrani);
+  document.getElementById('stat-strani-pct').textContent = (totalStrani/total*100).toFixed(1) + '%';
+  document.getElementById('stat-domaci').textContent = formatNum(totalDomaci);
+  document.getElementById('stat-domaci-pct').textContent = (totalDomaci/total*100).toFixed(1) + '%';
+  document.getElementById('stat-nocenja').textContent = formatNum(totalNoc);
+  document.getElementById('stat-nocenja-sub').textContent =
+    'prosječno ' + (totalNoc/total).toFixed(1) + ' noćenja po dolasku';
+  drawPieChart(totalStrani, totalDomaci);
+}
+
+function updateSelectedInfo(zup) {
+  if (!zup) {
+    document.getElementById('selected-info').innerHTML =
+      '<div class="hint">Klikni na županiju na karti za detalje</div>';
+    return;
+  }
+  const data = countyData[zup];
+  if (!data) return;
+  let total = 0, strani = 0, domaci = 0, noc = 0;
+  Object.values(data).forEach(m => {
+    total += m.domaci + m.strani; strani += m.strani;
+    domaci += m.domaci; noc += m.nocDomaci + m.nocStrani;
+  });
+  document.getElementById('selected-info').innerHTML = `
+    <h4>${zup}</h4>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
+      <div><div style="color:var(--text3)">Ukupno</div><strong>${formatFull(total)}</strong></div>
+      <div><div style="color:var(--text3)">Noćenja</div><strong>${formatFull(noc)}</strong></div>
+      <div><div style="color:var(--text3)">Strani</div><strong>${formatFull(strani)}</strong></div>
+      <div><div style="color:var(--text3)">Domaći</div><strong>${formatFull(domaci)}</strong></div>
+    </div>`;
+}
+
+function drawPieChart(strani, domaci) {
+  const svg = d3.select('#pie-svg');
+  svg.selectAll('*').remove();
+  const W = 110, H = 110, r = 46, innerR = 26;
+  const g = svg.append('g').attr('transform', `translate(${W/2},${H/2})`);
+
+  const data = [
+    { label: 'Strani', value: strani, color: '#1e5fa8' },
+    { label: 'Domaći', value: domaci, color: '#1a6b4a' }
+  ];
+
+  const pie = d3.pie().value(d => d.value).sort(null);
+  const arc = d3.arc().innerRadius(innerR).outerRadius(r);
+
+  g.selectAll('path')
+    .data(pie(data))
+    .join('path')
+    .attr('d', arc)
+    .attr('fill', d => d.data.color)
+    .attr('stroke', 'white')
+    .attr('stroke-width', 2);
+}
+
+function drawMap() {
+  document.getElementById('map-loading').style.display = 'none';
+  const svg = d3.select('#map-svg').style('display', 'block');
+  const container = document.getElementById('map-container');
+  const W = container.offsetWidth, H = 340;
+  svg.attr('viewBox', `0 0 ${W} ${H}`);
+
+  const projection = d3.geoMercator().fitSize([W, H], geoData);
+  const path = d3.geoPath().projection(projection);
+
+  const values = {};
+  geoData.features.forEach(f => {
+    const geoName = f.properties.NAME_1;
+    values[geoName] = getMetricValue(NAME_MAP[geoName] || geoName, currentMetric);
+  });
+  const maxVal = d3.max(Object.values(values));
+  document.getElementById('legend-min').textContent = '0';
+  document.getElementById('legend-max').textContent = formatNum(maxVal);
+
+  const colorScale = d3.scaleSequential()
+    .domain([0, maxVal])
+    .interpolator(d3.interpolate('#e8f5ee', '#1a6b4a'));
+
+  svg.selectAll('.county-path').remove();
+  svg.selectAll('.county-path')
+    .data(geoData.features)
+    .join('path')
+    .attr('class', d => {
+      const cn = NAME_MAP[d.properties.NAME_1] || d.properties.NAME_1;
+      return 'county-path' + (selectedCounties.includes(cn) ? ' selected' : '');
+    })
+    .attr('d', path)
+    .attr('fill', d => colorScale(values[d.properties.NAME_1] || 0))
+    .on('mousemove', function(event, d) {
+      const csvName = NAME_MAP[d.properties.NAME_1] || d.properties.NAME_1;
+      const tip = document.getElementById('map-tooltip');
+      tip.innerHTML = `<strong>${csvName}</strong>${formatFull(values[d.properties.NAME_1] || 0)}`;
+      tip.style.opacity = 1;
+      const rect = container.getBoundingClientRect();
+      let x = event.clientX - rect.left + 12;
+      let y = event.clientY - rect.top - 36;
+      if (x + 160 > W) x -= 170;
+      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    })
+    .on('mouseleave', () => { document.getElementById('map-tooltip').style.opacity = 0; })
+    .on('click', function(event, d) {
+      const csvName = NAME_MAP[d.properties.NAME_1] || d.properties.NAME_1;
+      if (!countyData[csvName]) return;
+      addCounty(csvName);
+      updateSelectedInfo(csvName);
+      svg.selectAll('.county-path').classed('selected', dd => {
+        const cn = NAME_MAP[dd.properties.NAME_1] || dd.properties.NAME_1;
+        return selectedCounties.includes(cn);
+      });
+    });
+}
+
+function updateMapColors() {
+  if (!geoData) return;
+  const values = {};
+  geoData.features.forEach(f => {
+    const geoName = f.properties.NAME_1;
+    values[geoName] = getMetricValue(NAME_MAP[geoName] || geoName, currentMetric);
+  });
+  const maxVal = d3.max(Object.values(values));
+  document.getElementById('legend-min').textContent = '0';
+  document.getElementById('legend-max').textContent = formatNum(maxVal);
+
+  const colorScale = d3.scaleSequential()
+    .domain([0, maxVal])
+    .interpolator(d3.interpolate('#e8f5ee', '#1a6b4a'));
+
+  d3.select('#map-svg').selectAll('.county-path')
+    .transition().duration(400)
+    .attr('fill', d => colorScale(values[d.properties.NAME_1] || 0));
+}
+
+function addCounty(csvName) {
+  if (selectedCounties.includes(csvName)) return;
+  if (selectedCounties.length >= 2) selectedCounties.shift();
+  selectedCounties.push(csvName);
+  renderChips();
+  drawLineChart();
+}
+
+function removeCounty(csvName) {
+  selectedCounties = selectedCounties.filter(c => c !== csvName);
+  renderChips();
+  drawLineChart();
+  d3.select('#map-svg').selectAll('.county-path').classed('selected', dd => {
+    const cn = NAME_MAP[dd.properties.NAME_1] || dd.properties.NAME_1;
+    return selectedCounties.includes(cn);
+  });
+  updateSelectedInfo(selectedCounties.length ? selectedCounties[selectedCounties.length - 1] : null);
+}
+
+function renderChips() {
+  const container = document.getElementById('county-chips');
+  container.innerHTML = '';
+  if (selectedCounties.length === 0) {
+    container.appendChild(Object.assign(document.createElement('span'), {
+      className: 'chip-hint'
+    }));
+    return;
+  }
+  selectedCounties.forEach((name, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'county-chip';
+    chip.innerHTML = `<div class="dot" style="background:${LINE_COLORS[i]}"></div>${name}<span class="remove">×</span>`;
+    chip.querySelector('.remove').addEventListener('click', () => removeCounty(name));
+    container.appendChild(chip);
+  });
+  if (selectedCounties.length < 2) {
+    const hint = document.createElement('span');
+    hint.className = 'chip-hint';
+    container.appendChild(hint);
+  }
+}
+
+function drawLineChart() {
+  const svgEl = document.getElementById('line-svg');
+  const W = svgEl.parentElement.offsetWidth, H = 280;
+  const margin = { top: 16, right: 24, bottom: 36, left: 60 };
+  const iW = W - margin.left - margin.right, iH = H - margin.top - margin.bottom;
+
+  const svg = d3.select('#line-svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', W).attr('height', H);
+  svg.selectAll('*').remove();
+
+  if (selectedCounties.length === 0) {
+    svg.append('text').attr('x', W/2).attr('y', H/2)
+      .attr('text-anchor', 'middle').attr('fill', 'var(--text3)')
+      .attr('font-size', 13).attr('font-family', 'DM Sans')
+      .text('Klikni na županiju.');
+    return;
+  }
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  const allVals = selectedCounties.flatMap(name =>
+    MONTHS.map((_, mi) => getMonthValue(name, mi+1, currentLineMetric))
+  );
+  const maxVal = d3.max(allVals) * 1.1;
+  const x = d3.scaleLinear().domain([1, 12]).range([0, iW]);
+  const y = d3.scaleLinear().domain([0, maxVal]).range([iH, 0]);
+
+  g.append('g').selectAll('line').data(y.ticks(5)).join('line')
+    .attr('class', 'grid-line').attr('x1', 0).attr('x2', iW)
+    .attr('y1', d => y(d)).attr('y2', d => y(d));
+
+  g.append('g').attr('class', 'axis').attr('transform', `translate(0,${iH})`)
+    .call(d3.axisBottom(x).ticks(12).tickFormat((d, i) => MONTHS_SHORT[i]));
+  g.append('g').attr('class', 'axis')
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d => formatNum(d)));
+
+  const line = d3.line().x((_, i) => x(i+1)).y(d => y(d)).curve(d3.curveMonotoneX);
+  const tooltip = document.getElementById('line-tooltip');
+  const lineContainer = svgEl.parentElement;
+
+  selectedCounties.forEach((name, ci) => {
+    const vals = MONTHS.map((_, mi) => getMonthValue(name, mi+1, currentLineMetric));
+    const color = LINE_COLORS[ci];
+
+    g.append('path').datum(vals).attr('class', 'line-path').attr('d', line)
+      .attr('stroke', color).attr('opacity', 0)
+      .transition().duration(500).attr('opacity', 0.9);
+
+    g.selectAll(`.dot-${ci}`).data(vals).join('circle')
+      .attr('class', `line-dot dot-${ci}`)
+      .attr('cx', (_, i) => x(i+1)).attr('cy', d => y(d))
+      .attr('r', 4).attr('fill', color).attr('stroke', 'white').attr('stroke-width', 1.5)
+      .on('mousemove', function(event, d) {
+        const i = vals.indexOf(d);
+        tooltip.innerHTML = `<strong>${name}</strong><br>${MONTHS[i]}: ${formatFull(d)}`;
+        tooltip.style.opacity = 1;
+        const rect = lineContainer.getBoundingClientRect();
+        tooltip.style.left = (event.clientX - rect.left + 10) + 'px';
+        tooltip.style.top  = (event.clientY - rect.top - 40) + 'px';
+      })
+      .on('mouseleave', () => { tooltip.style.opacity = 0; });
+  });
+}
+
+function drawBarChart() {
+  const svgEl = document.getElementById('bar-svg');
+  const W = svgEl.parentElement.offsetWidth, H = 280;
+  const margin = { top: 10, right: 20, bottom: 64, left: 56 };
+  const iW = W - margin.left - margin.right, iH = H - margin.top - margin.bottom;
+
+  const svg = d3.select('#bar-svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', W).attr('height', H);
+  svg.selectAll('*').remove();
+
+  const counties = Object.keys(countyData).sort();
+  const data = counties.map(name => ({
+    name,
+    dolasci: (countyData[name]?.[currentMonth]?.domaci || 0) + (countyData[name]?.[currentMonth]?.strani || 0),
+    nocenja: (countyData[name]?.[currentMonth]?.nocDomaci || 0) + (countyData[name]?.[currentMonth]?.nocStrani || 0),
+  }));
+
+  const maxVal = d3.max(data, d => Math.max(d.dolasci, d.nocenja)) * 1.1;
+  const xOuter = d3.scaleBand().domain(counties).range([0, iW]).padding(0.2);
+  const xInner = d3.scaleBand().domain(['dolasci','nocenja']).range([0, xOuter.bandwidth()]).padding(0.05);
+  const y = d3.scaleLinear().domain([0, maxVal]).range([iH, 0]);
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  g.append('g').selectAll('line').data(y.ticks(4)).join('line')
+    .attr('class', 'grid-line').attr('x1', 0).attr('x2', iW)
+    .attr('y1', d => y(d)).attr('y2', d => y(d));
+
+  const shortNames = {
+    'Istra': 'Istra', 'Kvarner': 'Kvarner', 'Zadarska': 'Zadarska',
+    'Šibensko-kninska': 'Šibensko-kn.', 'Splitsko-dalmatinska': 'Split.-dalm.',
+    'Dubrovačko-neretvanska': 'Dubr.-ner.', 'Grad Zagreb': 'Grad Zagreb',
+    'Bjelovarsko-bilogorska': 'Bjelovar.-bil.', 'Brodsko-posavska': 'Brodsko-pos.',
+    'Karlovačka': 'Karlovačka', 'Koprivničko-križevačka': 'Koprivn.-križ.',
+    'Krapinsko-zagorska': 'Krapin.-zagor.', 'Međimurska': 'Međimurska',
+    'Osječko-baranjska': 'Osječko-bar.', 'Požeško-slavonska': 'Požeško-slav.',
+    'Sisačko-moslavačka': 'Sisačko-mosl.', 'Varaždinska': 'Varaždinska',
+    'Virovitičko-podravska': 'Virovit.-podr.', 'Vukovarsko-srijemska': 'Vukovar.-srij.',
+    'Zagrebačka': 'Zagrebačka', 'Ličko-senjska': 'Ličko-senj.'
+  };
+
+  g.append('g').attr('class', 'axis').attr('transform', `translate(0,${iH})`)
+    .call(d3.axisBottom(xOuter).tickFormat(d => shortNames[d] || d))
+    .selectAll('text').style('font-size', '10px')
+    .attr('transform', 'rotate(-35)').style('text-anchor', 'end');
+
+  g.append('g').attr('class', 'axis')
+    .call(d3.axisLeft(y).ticks(4).tickFormat(d => formatNum(d)));
+
+  const tooltip = document.getElementById('bar-tooltip');
+  const barContainer = svgEl.parentElement;
+
+  const groups = g.selectAll('.county-group')
+    .data(data, d => d.name)
+    .join(
+      enter => enter.append('g').attr('class', 'county-group'),
+      update => update,
+      exit => exit.remove()
+    )
+    .attr('transform', d => `translate(${xOuter(d.name)},0)`);
+
+  groups.selectAll('.bar-dolasci').data(d => [d])
+    .join(
+      enter => enter.append('rect').attr('class', 'bar-rect bar-dolasci').attr('y', iH).attr('height', 0),
+      update => update,
+      exit => exit.transition().duration(300).attr('height', 0).attr('y', iH).remove()
+    )
+    .attr('x', xInner('dolasci')).attr('width', xInner.bandwidth())
+    .attr('fill', 'var(--accent)').attr('rx', 2)
+    .transition().duration(450).delay((_, i) => i * 12)
+    .attr('y', d => y(d.dolasci)).attr('height', d => iH - y(d.dolasci));
+
+  groups.selectAll('.bar-nocenja').data(d => [d])
+    .join(
+      enter => enter.append('rect').attr('class', 'bar-rect bar-nocenja').attr('y', iH).attr('height', 0),
+      update => update,
+      exit => exit.transition().duration(300).attr('height', 0).attr('y', iH).remove()
+    )
+    .attr('x', xInner('nocenja')).attr('width', xInner.bandwidth())
+    .attr('fill', 'var(--coral)').attr('rx', 2)
+    .transition().duration(450).delay((_, i) => i * 12)
+    .attr('y', d => y(d.nocenja)).attr('height', d => iH - y(d.nocenja));
+
+  groups
+    .on('mousemove', function(event, d) {
+      const avg = d.dolasci > 0 ? (d.nocenja / d.dolasci).toFixed(1) : '—';
+      tooltip.innerHTML = `<strong>${d.name}</strong><br>prosječno ${avg} noćenja po dolasku`;
+      tooltip.style.opacity = 1;
+      const rect = barContainer.getBoundingClientRect();
+      tooltip.style.left = (event.clientX - rect.left + 10) + 'px';
+      tooltip.style.top  = (event.clientY - rect.top - 55) + 'px';
+    })
+    .on('mouseleave', () => { tooltip.style.opacity = 0; });
+}
+
+document.querySelectorAll('.pill').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    currentMetric = this.dataset.metric;
+    updateMapColors();
+  });
+});
+
+document.querySelectorAll('.line-pill').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.line-pill').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    currentLineMetric = this.dataset.lmetric;
+    drawLineChart();
+  });
+});
+
+document.getElementById('month-slider').addEventListener('input', function() {
+  currentMonth = +this.value;
+  document.getElementById('month-display').textContent = MONTHS[currentMonth - 1];
+  drawBarChart();
+});
+
+window.addEventListener('resize', () => { drawMap(); drawLineChart(); drawBarChart(); });
+</script>
+</body>
+</html>
