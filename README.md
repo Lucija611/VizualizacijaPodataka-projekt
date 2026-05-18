@@ -34,6 +34,6 @@ python -m http.server 8000
 
 ## Grafovi
 
-- **Karta** — odabir vrijednosti (ukupni, strani ili domaći turisti, noćenja), klik na županiju prikazuje linijski dijagram
-- **Linijski dijagram** — prikazuje trend kroz godinu za odabrane županije (maksimalno dvije)
-- **Stupčasti dijagram** — sliderom se mijenja mjesec i uspoređuju dolasci i noćenja po svim županijama
+- **Karta** - odabir vrijednosti (ukupni, strani ili domaći turisti, noćenja), klik na županiju prikazuje linijski dijagram
+- **Linijski dijagram** - prikazuje trend kroz godinu za odabrane županije (maksimalno dvije)
+- **Stupčasti dijagram** - sliderom se mijenja mjesec i uspoređuju dolasci i noćenja po svim županijama
