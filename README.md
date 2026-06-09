@@ -32,6 +32,11 @@ cd VizualizacijaPodataka-projekt
 python -m http.server 8000
 ```
 
+4. Otvoriti u web pregledniku:
+```
+http://localhost:8000/
+```
+
 ## Grafovi
 
 - **Karta** - odabir vrijednosti (ukupni, strani ili domaći turisti, noćenja), klik na županiju prikazuje linijski dijagram
