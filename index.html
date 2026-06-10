@@ -68,9 +68,6 @@
           <div class="stat-block-val" id="stat-nocenja">—</div>
           <div class="stat-block-sub" id="stat-nocenja-sub">—</div>
         </div>
-        <div class="selected-info" id="selected-info">
-          <div class="hint"> Klikni na županiju na karti za detalje</div>
-        </div>
       </div>
     </div>
 
@@ -211,26 +208,51 @@ function formatFull(n) {
   return new Intl.NumberFormat('hr-HR').format(Math.round(n));
 }
 
-function updateStats() {
+function updateStats(zup = null) {
   let totalDomaci = 0, totalStrani = 0, totalNoc = 0;
-  Object.values(countyData).forEach(months =>
-    Object.values(months).forEach(m => {
-      totalDomaci += m.domaci; totalStrani += m.strani;
+
+  const source = zup ? countyData[zup] : null;
+
+  if (source) {
+    Object.values(source).forEach(m => {
+      totalDomaci += m.domaci;
+      totalStrani += m.strani;
       totalNoc += m.nocDomaci + m.nocStrani;
-    })
-  );
+    });
+
+    document.querySelector('.stats-card .card-title strong').textContent = zup;
+    document.querySelector('.stat-hero-label').textContent = 'Ukupni dolasci 2025.';
+
+  } else {
+    Object.values(countyData).forEach(months =>
+      Object.values(months).forEach(m => {
+        totalDomaci += m.domaci;
+        totalStrani += m.strani;
+        totalNoc += m.nocDomaci + m.nocStrani;
+      })
+    );
+
+    document.querySelector('.stats-card .card-title strong').textContent = 'Ukupna statistika';
+    document.querySelector('.stat-hero-label').textContent = 'Ukupni dolasci 2025.';
+  }
+
   const total = totalDomaci + totalStrani;
+
   document.getElementById('stat-total').textContent = formatNum(total);
   document.getElementById('stat-strani').textContent = formatNum(totalStrani);
-  document.getElementById('stat-strani-pct').textContent = (totalStrani/total*100).toFixed(1) + '%';
+  document.getElementById('stat-strani-pct').textContent =
+    total ? (totalStrani / total * 100).toFixed(1) + '%' : '—';
+
   document.getElementById('stat-domaci').textContent = formatNum(totalDomaci);
-  document.getElementById('stat-domaci-pct').textContent = (totalDomaci/total*100).toFixed(1) + '%';
+  document.getElementById('stat-domaci-pct').textContent =
+    total ? (totalDomaci / total * 100).toFixed(1) + '%' : '—';
+
   document.getElementById('stat-nocenja').textContent = formatNum(totalNoc);
   document.getElementById('stat-nocenja-sub').textContent =
-    'prosječno ' + (totalNoc/total).toFixed(1) + ' noćenja po dolasku';
-  drawPieChart(totalStrani, totalDomaci);
-}
+    total ? 'prosječno ' + (totalNoc / total).toFixed(1) + ' noćenja po dolasku' : '—';
 
+  drawDonutChart(totalStrani, totalDomaci);
+}
 function updateSelectedInfo(zup) {
   if (!zup) {
     document.getElementById('selected-info').innerHTML =
@@ -254,7 +276,7 @@ function updateSelectedInfo(zup) {
     </div>`;
 }
 
-function drawPieChart(strani, domaci) {
+function drawDonutChart(strani, domaci) {
   const svg = d3.select('#pie-svg');
   svg.selectAll('*').remove();
   const W = 110, H = 110, r = 46, innerR = 26;
@@ -325,8 +347,15 @@ function drawMap() {
     .on('click', function(event, d) {
       const csvName = NAME_MAP[d.properties.NAME_1] || d.properties.NAME_1;
       if (!countyData[csvName]) return;
-      addCounty(csvName);
-      updateSelectedInfo(csvName);
+
+      if (selectedCounties.includes(csvName)) {
+        removeCounty(csvName);
+        updateStats(selectedCounties.length ? selectedCounties[selectedCounties.length - 1] : null);
+      } else {
+        addCounty(csvName);
+        updateStats(csvName);
+      }
+
       svg.selectAll('.county-path').classed('selected', dd => {
         const cn = NAME_MAP[dd.properties.NAME_1] || dd.properties.NAME_1;
         return selectedCounties.includes(cn);
@@ -370,7 +399,7 @@ function removeCounty(csvName) {
     const cn = NAME_MAP[dd.properties.NAME_1] || dd.properties.NAME_1;
     return selectedCounties.includes(cn);
   });
-  updateSelectedInfo(selectedCounties.length ? selectedCounties[selectedCounties.length - 1] : null);
+  updateStats(selectedCounties.length ? selectedCounties[selectedCounties.length - 1] : null);
 }
 
 function renderChips() {

@@ -26,7 +26,6 @@ body {
   min-height: 100vh;
 }
 
-/* HEADER */
 .header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -44,7 +43,6 @@ body {
   letter-spacing: -0.2px;
 }
 
-/* LAYOUT */
 .page { padding: 28px 36px; max-width: 1400px; margin: 0 auto; }
 
 .grid-top {
@@ -54,7 +52,6 @@ body {
   margin-bottom: 20px;
 }
 
-/* CARDS */
 .card {
   background: var(--surface);
   border-radius: 16px;
@@ -73,7 +70,6 @@ body {
   color: var(--text); margin-bottom: 16px;
 }
 
-/* MAP CARD */
 .map-card .card-accent-bar { background: var(--accent); }
 
 .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -111,7 +107,6 @@ body {
   background: linear-gradient(to right, #e8f5ee, #1a6b4a);
 }
 
-/* MAP TOOLTIP */
 .map-tooltip {
   position: absolute; pointer-events: none;
   background: var(--text); color: #fff;
@@ -123,7 +118,8 @@ body {
 }
 .map-tooltip strong { display: block; font-size: 13px; margin-bottom: 2px; }
 
-/* STATS CARD */
+
+
 .stats-card { display: flex; flex-direction: column; }
 .stats-card .card-accent-bar { background: var(--text3); }
 
@@ -166,7 +162,8 @@ body {
 .selected-info h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .selected-info .hint { font-size: 11px; color: var(--text3); }
 
-/* LINE CARD */
+
+
 .line-card .card-accent-bar { background: var(--blue); }
 
 .county-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
@@ -203,7 +200,9 @@ body {
 .line-path { fill: none; stroke-width: 2.5; }
 .line-dot { cursor: pointer; }
 
-/* LINE TOOLTIP */
+
+
+
 .line-tooltip {
   position: absolute; pointer-events: none;
   background: var(--text); color: #fff;
@@ -213,7 +212,9 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
-/* BAR CARD */
+
+
+
 .bar-card .card-accent-bar { background: var(--coral); }
 
 .month-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -232,7 +233,8 @@ body {
 .bar-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
 .bar-legend-dot { width: 10px; height: 10px; border-radius: 2px; }
 
-/* BAR TOOLTIP */
+
+
 .bar-tooltip {
   position: absolute; pointer-events: none;
   background: var(--text); color: #fff;
@@ -242,7 +244,7 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
-/* LOADING */
+
 .loading {
   display: flex; align-items: center; justify-content: center;
   height: 300px; color: var(--text3); font-size: 13px; gap: 8px;
